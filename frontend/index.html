@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>JWT Single Page App</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width: 500px; margin: 50px auto; padding: 0 16px; }
+    input, button { padding: 8px; font-size: 14px; margin: 4px 0; width: 100%; box-sizing: border-box; }
+    #message { margin-top: 12px; color: green; }
+    #error { margin-top: 12px; color: red; }
+    .hidden { display: none; }
+    h2 { margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+  <!-- Login Form -->
+  <div id="loginDiv">
+    <h2>Login</h2>
+    <label>Username</label>
+    <input id="username" value="user">
+    <label>Password</label>
+    <input id="password" type="password" value="password">
+    <button id="btnLogin">Login</button>
+    <div id="error"></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboardDiv" class="hidden">
+    <h2>Dashboard</h2>
+    <div id="message"></div>
+    <div id="errorDash"></div>
+    <button id="btnLogout">Logout</button>
+  </div>
+
+<script>
+const apiBase = 'http://localhost:8080';
+
+function showLogin() {
+  document.getElementById('loginDiv').classList.remove('hidden');
+  document.getElementById('dashboardDiv').classList.add('hidden');
+}
+
+function showDashboard() {
+  document.getElementById('loginDiv').classList.add('hidden');
+  document.getElementById('dashboardDiv').classList.remove('hidden');
+}
+
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  try {
+    const res = await fetch(apiBase + '/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    if (!res.ok) throw new Error('Invalid login');
+    const data = await res.json();
+    localStorage.setItem('jwt_token', data.token);
+    loadDashboard();
+  } catch(err) {
+    document.getElementById('error').textContent = err.message;
+  }
+}
+
+async function loadDashboard() {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) return showLogin();
+
+  try {
+    const res = await fetch(apiBase + '/api/hello', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    if (!res.ok) throw new Error('Failed to fetch message');
+    const data = await res.json();
+    document.getElementById('message').textContent = data.message;
+    document.getElementById('errorDash').textContent = '';
+    showDashboard();
+  } catch(err) {
+    document.getElementById('errorDash').textContent = err.message;
+    showLogin();
+  }
+}
+
+function logout() {
+  localStorage.removeItem('jwt_token');
+  showLogin();
+}
+
+// Event listeners
+document.getElementById('btnLogin').addEventListener('click', login);
+document.getElementById('btnLogout').addEventListener('click', logout);
+
+// Auto-load
+if(localStorage.getItem('jwt_token')){
+  loadDashboard();
+} else {
+  showLogin();
+}
+</script>
+</body>
+</html>
